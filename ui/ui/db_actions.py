@@ -10,6 +10,14 @@ import psycopg2
 
 
 
+
+
+SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+
+
 # Get Secret values from you OS Environment
 db_name = "todo_db"
 db_pass = "oVicMndBI84f"
@@ -95,53 +103,3 @@ def get_usernames():
     return usernames_in_db
 
 
-def sign_up(col2):
-    success = False
-    # col1, col2 = st.columns(2)
-    with col2:
-        with st.form(key="signup", clear_on_submit=True):
-            st.subheader(':green[Sign Up]')
-            email = st.text_input('Email', placeholder="Enter You Email")
-            username = st.text_input('Username', placeholder="Enter Your Username")
-            password1 = st.text_input('Password', placeholder="Enter Your Password", type="password")
-            password2 = st.text_input('Confirm Password', placeholder="Confirm Your Password", type="password")
-
-            if email:
-                if validate_email(email): #Validating that entered email is of correct format
-                    if email not in get_user_emails(): # Checking that same email is not already in use
-                        if validate_username(username):
-                            if username not in get_usernames():
-                                if len(username) > 2:
-                                    if len(password1) >= 6:
-                                        if password1 == password2:
-                                            hashed_password = Hasher([password1]).generate()
-                                            # Add User to the Database
-                                            try:
-                                                insert_user(email, username, hashed_password[0])
-                                                st.success('Account Created Successfully!')
-                                                success = True
-                                            except Exception as e:
-                                                st.error("Internal Error Occurred")
-                                        else:
-                                            st.warning('Passwords do not match!')
-                                    else:
-                                        st.warning('Password is too Short')
-                                else:
-                                    st.warning('Username is too Short')
-                            else:
-                                st.warning('Username Already Exist!')
-                        else:
-                            st.warning('Invalid Username')
-                    else:
-                        st.warning('Email Already Exist!')
-                else:
-                    st.error('Invalid Email')
-
-            btn1, btn2, btn3 = st.columns(3)  #Centering Signup Button in Form
-            with btn2:
-                st.form_submit_button('Sign Up')
-
-    if success:
-        return True
-    else:
-        return False

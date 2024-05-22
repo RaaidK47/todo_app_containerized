@@ -11,7 +11,8 @@ from todos import to_do
 
 
 
-BASE_URL = "http://172.17.0.1:8000"  # BASE URL of Docker Container
+# BASE_URL = "http://172.17.0.1:8000"  # BASE URL of Docker Container
+BASE_URL = "http://127.0.0.1:8000"     # BASE URL of Local PC
 
 @st.experimental_dialog("Create ToDo Item")
 def todoDialog(username):
@@ -115,10 +116,11 @@ def update_todo(id, username, todo):
 
 def get_todos(username):
     prev_todos_status = {}
+    username = str(username).lower()
+    print(username)
     response = requests.get(f"{BASE_URL}/todos/", {"username": username})
-
     response_list = response.json()
-
+    print(response_list)
     # Sort Reponses by ID to maintain Order after Updates
     reponse_list_sorted = sorted(response_list, key=lambda d: d['id'])
 
