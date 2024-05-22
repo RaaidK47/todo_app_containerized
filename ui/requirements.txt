@@ -1,0 +1,6 @@
+streamlit == 1.34.0
+streamlit-authenticator == 0.3.2
+st-pages == 0.4.5
+st-login-form == 0.2.2
+streamlit-extras == 0.4.2
+sqlmodel == 0.0.18

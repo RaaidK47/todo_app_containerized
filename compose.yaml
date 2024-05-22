@@ -1,0 +1,59 @@
+version: "3.9"
+
+name: todo-app
+
+services:
+  api:
+    build:  
+      context: ./api
+      dockerfile: Dockerfile
+    depends_on:
+      - postgres_db
+    ports:
+      - "8000:8000"
+    extra_hosts:
+    - "host.docker.internal:host-gateway"
+    networks:
+      - my-api-net-todo
+    container_name: FastAPI
+
+  ui:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile
+    depends_on:
+      - api
+    ports:
+      - "8501:8501"
+    extra_hosts:
+    - "host.docker.internal:host-gateway"
+    networks:
+      - my-api-net-todo
+    container_name: Streamlit-UI
+
+  postgres_db:
+    image: postgres:latest
+    restart: always
+    container_name: PostgresContainer
+
+
+    environment:
+      - POSTGRES_USER=raaidk
+      - POSTGRES_PASSWORD=pass123
+      - POSTGRES_DB=mydatabase
+
+    ports:
+      - "5442:5432"
+
+    volumes:
+      - postgres_db:/var/lib/postgressql/todo_data
+
+    networks:
+      - my-api-net-todo
+
+volumes:
+  postgres_db:
+    driver: local
+
+networks:
+  my-api-net-todo: 
