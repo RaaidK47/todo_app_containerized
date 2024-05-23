@@ -11,11 +11,13 @@ from todos import to_do
 
 
 
-# BASE_URL = "http://172.17.0.1:8000"  # BASE URL of Docker Container
-BASE_URL = "http://127.0.0.1:8000"     # BASE URL of Local PC
+BASE_URL = "http://172.17.0.1:8000"  # BASE URL of Docker Container
+# BASE_URL = "http://127.0.0.1:8000"     # BASE URL of Local PC
 
 @st.experimental_dialog("Create ToDo Item")
 def todoDialog(username):
+    print("ToDo Dialog Called")
+    username = str(username).lower()
     with st.form(key="ToDoForm", clear_on_submit=True):
         todo_title = st.text_input(r"$\textsf{\Large Title}$", placeholder="Title of ToDo Task")  # Using LATEX to show large title of text_input
         todo_description = st.text_area(r"$\textsf{\Large Description}$", placeholder="Description of ToDo Task") 
@@ -56,6 +58,7 @@ def update_request(username, todo_title_updt, todo_description_updt, target_date
     print(todo_title_updt)
     print(todo_description_updt)
     print(target_date_updt)
+    username = str(username).lower()
     if todo_title_updt == "" or todo_description_updt == "" or target_date_updt == "":
         st.warning("Please Fill All Fields")
     else:
@@ -117,10 +120,10 @@ def update_todo(id, username, todo):
 def get_todos(username):
     prev_todos_status = {}
     username = str(username).lower()
-    print(username)
+    # print(username)
     response = requests.get(f"{BASE_URL}/todos/", {"username": username})
     response_list = response.json()
-    print(response_list)
+    # print(response_list)
     # Sort Reponses by ID to maintain Order after Updates
     reponse_list_sorted = sorted(response_list, key=lambda d: d['id'])
 
@@ -267,6 +270,8 @@ def main(username):
         st.header("")
         st.header("")
 
+
+        
     get_todos(username)
 
     
