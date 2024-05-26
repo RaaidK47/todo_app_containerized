@@ -12,6 +12,8 @@ from passlib.context import CryptContext
 from pydantic import BaseModel
 from datetime import datetime, timedelta, timezone
 import logging
+from starlette.middleware.cors import CORSMiddleware
+import api.settings as settings
 
 logging.getLogger('passlib').setLevel(logging.ERROR) # To Suppress bcrypt Warnings
 
@@ -28,6 +30,15 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 app = FastAPI()
+
+# CORS Middleware is required for CORS Issue
+# When running FastAPI in Docker & Swagger in Local Computer
+app.add_middleware(CORSMiddleware,
+allow_origins=["*"],
+allow_credentials=True,
+allow_methods=["*"],
+allow_headers=["*"],
+expose_headers=["*"])
 
 # A table of ToDo Items in Database for Every User
 class ToDos(SQLModel, table=True):
@@ -54,15 +65,12 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     username: Union[str, None] = None
 
-
-# Get Secret values from you OS Environment
-db_name = "todo_db"
-db_pass = "oVicMndBI84f"
-conn_string = f"postgresql://todo_db_owner:{db_pass}@ep-ancient-bread-a5kwtqzb.us-east-2.aws.neon.tech/{db_name}?sslmode=require"
+# conn_string = f"postgresql://todo_db_owner:{db_pass}@ep-ancient-bread-a5kwtqzb.us-east-2.aws.neon.tech/{db_name}?sslmode=require"
+conn_string = str(settings.DATABASE_URL)
 
 def createEngineFunction():
     try:
-        engine = create_engine(conn_string)
+        engine = create_engine(conn_string, pool_size=10, max_overflow=20)
         SQLModel.metadata.create_all(engine)
         return engine
         # st.write("Connected to Database")

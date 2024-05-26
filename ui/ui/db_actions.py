@@ -7,20 +7,18 @@ import re
 import os
 from sqlmodel import Field, SQLModel, create_engine, Session, select
 import psycopg2
+import settings
 
 
+# Setting up DB Connectivity
 
+# For NeonTech DB 
+# db_name = "todo_db"
+# db_pass = "oVicMndBI84f"
+# conn_string = f"postgresql://todo_db_owner:{db_pass}@ep-ancient-bread-a5kwtqzb.us-east-2.aws.neon.tech/{db_name}?sslmode=require"
 
+conn_string = str(settings.DATABASE_URL)
 
-SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
-
-
-
-# Get Secret values from you OS Environment
-db_name = "todo_db"
-db_pass = "oVicMndBI84f"
 
 # A table of Users in Database
 class Users(SQLModel, table=True):
@@ -30,13 +28,20 @@ class Users(SQLModel, table=True):
     username: str
     hash_password: str
 
-# Setting up DB Connectivity
+# A table of ToDo Items in Database for Every User
+class ToDos(SQLModel, table=True):
+    __table_args__ = {"extend_existing": True}  #If Table Already Exists, Append to that table
+    id: int | None = Field(default=None, primary_key=True)
+    username: str
+    title: str
+    description: str
+    target_date: str
+    completed: bool
 
-conn_string = f"postgresql://todo_db_owner:{db_pass}@ep-ancient-bread-a5kwtqzb.us-east-2.aws.neon.tech/{db_name}?sslmode=require"
 
 def createEngineFunction():
     try:
-        engine = create_engine(conn_string)
+        engine = create_engine(conn_string, pool_size=10, max_overflow=20)
         SQLModel.metadata.create_all(engine)
         return engine
         # st.write("Connected to Database")

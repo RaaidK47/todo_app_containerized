@@ -40,10 +40,10 @@ services:
     environment:
       - POSTGRES_USER=raaidk
       - POSTGRES_PASSWORD=pass123
-      - POSTGRES_DB=mydatabase
+      - POSTGRES_DB=todo_database
 
     ports:
-      - "5442:5432"
+      - "5432:5432"
 
     volumes:
       - postgres_db:/var/lib/postgressql/todo_data
