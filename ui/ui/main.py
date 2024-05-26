@@ -138,7 +138,7 @@ if st.session_state.token:
                     st.session_state.token = None
                     cookies['token'] = ''
                     cookies.save()
-                    st.experimental_rerun()
+                    st.rerun()
 
 else:
     login()

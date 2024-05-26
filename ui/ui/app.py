@@ -31,11 +31,13 @@ def todoDialog(username):
             if todo_title == "" or todo_description == "" or target_date == "":
                 st.warning("Please Fill All Fields")
             else:
-                response = requests.post(f"{BASE_URL}/todos/", json={"username": username, 
+                headers = {'Authorization': f'Bearer {st.session_state.token}'}
+                response = requests.post(f"{BASE_URL}/users/me/todos/", json={"username": username, 
                                                                      "title": todo_title, 
                                                                      "description": todo_description, 
                                                                      "target_date": str(target_date),
-                                                                     "completed": False })
+                                                                     "completed": False },
+                                                                     headers=headers)
                 print(response)
                 if response.status_code == 200:
                     st.success("ToDo Created")
@@ -45,7 +47,8 @@ def todoDialog(username):
                     st.error(f"Unable to Create ToDo due to Status Code {response.status_code}")
 
 def delete_todo(id, username):
-    response = requests.delete(f"{BASE_URL}/todos/{id}")
+    headers = {'Authorization': f'Bearer {st.session_state.token}'}
+    response = requests.delete(f"{BASE_URL}/users/me/todos/{id}", headers=headers)
     if response.status_code == 200:
         print("ToDo Deleted Successfully")
         # time.sleep(2)
@@ -63,10 +66,12 @@ def update_request(username, todo_title_updt, todo_description_updt, target_date
         st.warning("Please Fill All Fields")
     else:
         print("Updating ToDo")
-        response = requests.put(f"{BASE_URL}/todos/{id}", json={"username": username,
+        headers = {'Authorization': f'Bearer {st.session_state.token}'}
+        response = requests.put(f"{BASE_URL}/users/me/todos/{id}", json={"username": username,
                                                                  "title": todo_title_updt, 
                                                                  "description": todo_description_updt, 
-                                                                 "target_date": str(target_date_updt)})
+                                                                 "target_date": str(target_date_updt)},
+                                                                 headers= headers)
         print(response)
         if response.status_code == 200:
             st.success("ToDo Updated!")
@@ -103,11 +108,12 @@ def update_todo(id, username, todo):
             if description_update == "":
                 description_update = todoDescription
                 
-            
-            response = requests.put(f"{BASE_URL}/todos/{id}", json={"username": username, 
+            headers = {'Authorization': f'Bearer {st.session_state.token}'}
+            response = requests.put(f"{BASE_URL}/users/me/todos/{id}", json={"username": username, 
                                                                     "title": title_update, 
                                                                     "description": description_update, 
-                                                                    "target_date": str(target_date_update)})
+                                                                    "target_date": str(target_date_update)},
+                                                                    headers=headers)
             # print(response)
             if response.status_code == 200:
                 st.success("ToDo Updated!")
@@ -121,88 +127,112 @@ def get_todos(username):
     prev_todos_status = {}
     username = str(username).lower()
     # print(username)
-    response = requests.get(f"{BASE_URL}/todos/", {"username": username})
-    response_list = response.json()
-    # print(response_list)
-    # Sort Reponses by ID to maintain Order after Updates
-    reponse_list_sorted = sorted(response_list, key=lambda d: d['id'])
 
+    headers = {'Authorization': f'Bearer {st.session_state.token}'}
 
-    # print(response.json())
-    if not reponse_list_sorted:
-        st.text("No ToDo Items")
-    else:
-        todos_status = {}
-        for i in reponse_list_sorted:
-            # print(i)
-            title = i['title']
-            description = i['description']
-            target_date = i['target_date']
-            id = i['id']
-            completed = i['completed']
+    # Reponse based on Username from Session
+    # response = requests.get(f"{BASE_URL}/todos/", {"username": username})
 
-            prev_todos_status[str(id)] = completed
+    # Reponse based on JWT Authentication Token
+    response = requests.get(f"{BASE_URL}/users/me/todos/", headers=headers)
 
-            col1 , col2 = st.columns([4,1])
-            with col1:
-                with stylable_container(
-                key="container_with_border",
-                css_styles=cssStyles.todoContainer
-                # css_styles=
-                ,):
+    if response.status_code == 401:
+        st.error("Unauthorized Access")
+        return
+    elif response.status_code == 403:
+        st.error("Forbidden Access")
+        return
+    elif response.status_code == 404:
+        st.error("Not Found")
+        return
+    elif response.status_code == 500:
+        st.error("Internal Server Error")
+    elif response.status_code == 503:
+        st.error("Service Unavailable")
 
-                    todo_check = to_do([(st.write, title),
-                            (st.markdown, f"""**Description:** *{description}*"""),
-                            (st.markdown, f"""**Target Date:** {target_date}"""),
-                        ],
-                        checkbox_id=str(id),
-                        check_bool=completed,
-                    )
-
-            todos_status[str(id)] = todo_check   # e.g. {'9': False, '10': False}
- 
-            with col2:
-                # st.markdown("")
-                with stylable_container(
-                    key="delete-button",
-                    css_styles=[cssStyles.delete_button],):
-                    st.button("Delete", key="btn_del_todo_"+str(id), on_click=delete_todo, args=(id, username))
-                
-
-                with stylable_container(
-                    key="update-button",
-                    css_styles=[cssStyles.update_button, cssStyles.update_button_hover],):  # Passing Multiple CSS Styles as List
-                    submitted = st.button("Update", key="btn_upd_todo_"+str(id))
-                    
-                if submitted:
-                    # print(id)
-                    # print(username)
-                    update_todo(id, username, next((item for item in response.json() if item['id'] == id), None))
-
-        if (prev_todos_status == todos_status):
-            print("todos Not Changed")
-            pass
+    elif response.status_code == 200:
         
+        response_list = response.json()
+        # print(response_list)
+        # Sort Reponses by ID to maintain Order after Updates
+        reponse_list_sorted = sorted(response_list, key=lambda d: d['id'])
+
+
+        # print(response.json())
+        if not reponse_list_sorted:
+            st.text("No ToDo Items")
         else:
-            print("todos Changed")
-            diff = {}
-            for key in prev_todos_status.keys() | todos_status.keys():
-                if prev_todos_status.get(key) != todos_status.get(key):
-                    diff[key] = (prev_todos_status.get(key), todos_status.get(key))
-            print(diff)  # e.g {'27': (False, True)}
+            todos_status = {}
+            for i in reponse_list_sorted:
+                # print(i)
+                title = i['title']
+                description = i['description']
+                target_date = i['target_date']
+                id = i['id']
+                completed = i['completed']
 
+                prev_todos_status[str(id)] = completed
 
-            key, value = list(diff.items())[0]
-            print(key, value[0], value[1])  # key = id
+                col1 , col2 = st.columns([4,1])
+                with col1:
+                    with stylable_container(
+                    key="container_with_border",
+                    css_styles=cssStyles.todoContainer
+                    # css_styles=
+                    ,):
 
-            response = requests.patch(f"{BASE_URL}/todos/{key}", json={"completed": value[1]})
-            # print(response)
-            if response.status_code == 200:
-                time.sleep(1)
-                st.rerun()
+                        todo_check = to_do([(st.write, title),
+                                (st.markdown, f"""**Description:** *{description}*"""),
+                                (st.markdown, f"""**Target Date:** {target_date}"""),
+                            ],
+                            checkbox_id=str(id),
+                            check_bool=completed,
+                        )
+
+                todos_status[str(id)] = todo_check   # e.g. {'9': False, '10': False}
+    
+                with col2:
+                    # st.markdown("")
+                    with stylable_container(
+                        key="delete-button",
+                        css_styles=[cssStyles.delete_button],):
+                        st.button("Delete", key="btn_del_todo_"+str(id), on_click=delete_todo, args=(id, username))
+                    
+
+                    with stylable_container(
+                        key="update-button",
+                        css_styles=[cssStyles.update_button, cssStyles.update_button_hover],):  # Passing Multiple CSS Styles as List
+                        submitted = st.button("Update", key="btn_upd_todo_"+str(id))
+                        
+                    if submitted:
+                        # print(id)
+                        # print(username)
+                        update_todo(id, username, next((item for item in response.json() if item['id'] == id), None))
+
+            if (prev_todos_status == todos_status):
+                print("todos Not Changed")
+                pass
+            
             else:
-                st.error(f"Unable to Update ToDo due to Status Code {response.status_code}")
+                print("todos Changed")
+                diff = {}
+                for key in prev_todos_status.keys() | todos_status.keys():
+                    if prev_todos_status.get(key) != todos_status.get(key):
+                        diff[key] = (prev_todos_status.get(key), todos_status.get(key))
+                print(diff)  # e.g {'27': (False, True)}
 
+                key, value = list(diff.items())[0]
+                print(key, value[0], value[1])  # key = id
+
+                headers = {'Authorization': f'Bearer {st.session_state.token}'}
+                response = requests.patch(f"{BASE_URL}/users/me/todos/{key}", json={"completed": value[1]},
+                                          headers=headers)
+                # print(response)
+                if response.status_code == 200:
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.error(f"Unable to Update ToDo due to Status Code {response.status_code}")
 
         # print(todos_status)
 

@@ -175,12 +175,15 @@ async def login_for_access_token(
 async def read_users_me(
     current_user: Annotated[Users, Depends(get_current_active_user)],
 ):
+    '''Get Currently Active User'''
     return current_user
 
 @app.get("/users/me/todos/")
-def read_own_items(
+def get_todos_user(
     current_user: Annotated[Users, Depends(get_current_active_user)]
 ):
+    '''Returning ToDos for User that is 
+    currently Logged In'''
     session = Session(engine)
     current_user.username = str(current_user.username).lower()
     print(current_user.username)
@@ -191,65 +194,149 @@ def read_own_items(
     # print(results.all())
     return results.all()
 
-@app.get("/todos/")
-def retrieve_todos(username = ToDos.username, db: Session = Depends(create_session)):
-    # print(username)
-    statement = select(ToDos).where(ToDos.username == username)
-    # print(statement)
-    results = db.exec(statement)
-    # print(results.all())
-    return results.all()
+@app.post("/users/me/todos/")
+def create_todo(current_user: Annotated[Users, Depends(get_current_active_user)],
+                todo: ToDos, 
+                db: Session = Depends(create_session)
+):
+    '''Create a New ToDo Item for the
+    User that is currently Logged In'''
 
-@app.get("/todos/{todo_id}")
-def get_todo_id(todo_id: int, db: Session = Depends(create_session)):
-    todo = db.get(ToDos, todo_id)
-    if todo is None:
-        raise HTTPException(status_code=404, detail="Todo not found")
+    print("ToDo Created for User: " + current_user.username)
+    db.add(todo)
+    db.commit()
+    db.refresh(todo)
     return todo
 
-@app.put("/todos/{todo_id}")
-def update_todo(todo_id: int, updated_todo: ToDos, db: Session = Depends(create_session)):
+
+@app.put("/users/me/todos/{todo_id}")
+def update_todo(current_user: Annotated[Users, Depends(get_current_active_user)],
+                todo_id: int, 
+                updated_todo: ToDos, 
+                db: Session = Depends(create_session)):
+    
+    '''Updating ToDo Item for the User that is
+    currently Logged In'''
+
     statement = select(ToDos).where(ToDos.id == todo_id)
     results = db.exec(statement)
     todo = results.one()
 
-    todo.title = updated_todo.title
-    todo.description = updated_todo.description
-    todo.target_date = updated_todo.target_date
+    if todo is None:
+        raise HTTPException(status_code=404, detail="Todo not found")
 
-    db.add(todo)
-    db.commit()
-    db.refresh(todo)
+    if(todo.username == str(current_user.username).lower()):
+        todo.title = updated_todo.title
+        todo.description = updated_todo.description
+        todo.target_date = updated_todo.target_date
 
-    return True
+        db.add(todo)
+        db.commit()
+        db.refresh(todo)
+        return True
 
-@app.patch("/todos/{todo_id}")
-def update_todo_completed(todo_id: int, todo_updated:ToDos, db: Session = Depends(create_session)):
+    else:
+        print("You are not authorized to updated this ToDos")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not Authorized to Update this ToDo",
+        )
+
+
+
+@app.patch("/users/me/todos/{todo_id}")
+def update_todo_completed(current_user: Annotated[Users, Depends(get_current_active_user)],
+                          todo_id: int, todo_updated:ToDos, 
+                          db: Session = Depends(create_session)):
     # print(todo_updated)
+    '''Updating ToDo Item Completion Status
+    for the User that is currently Logged In'''
     statement = select(ToDos).where(ToDos.id == todo_id)
     results = db.exec(statement)
     todo = results.one()
 
-    todo.completed = todo_updated.completed
-
-    db.add(todo)
-    db.commit()
-    db.refresh(todo)
-
-    return True
-
-@app.delete("/todos/{todo_id}")
-def delete_todo(todo_id: int, db: Session = Depends(create_session)):
-    todo = db.get(ToDos, todo_id)
     if todo is None:
         raise HTTPException(status_code=404, detail="Todo not found")
-    db.delete(todo)
-    db.commit()
-    return {"message": "Todo deleted successfully"}
 
-@app.post("/todos/")
-def create_todo(todo: ToDos, db: Session = Depends(create_session)):
-    db.add(todo)
-    db.commit()
-    db.refresh(todo)
-    return todo
+    if(todo.username == str(current_user.username).lower()):
+        todo.completed = todo_updated.completed
+
+        db.add(todo)
+        db.commit()
+        db.refresh(todo)
+
+        return True
+    
+    else:
+        print("You are not authorized to Update Completion Status this ToDos")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not Authorized to change ToDo",
+        )
+
+
+@app.delete("/users/me/todos/{todo_id}")
+def delete_todo(current_user: Annotated[Users, Depends(get_current_active_user)],
+                todo_id: int, 
+                db: Session = Depends(create_session)):
+    '''Deleting ToDo Item for the User that is
+    currently Logged In'''
+
+    statement = select(ToDos).where(ToDos.id == todo_id)
+    results = db.exec(statement)
+    todo = results.one()
+
+    if todo is None:
+        raise HTTPException(status_code=404, detail="Todo not found")
+    
+    if (todo.username == str(current_user.username).lower()):
+        db.delete(todo)
+        db.commit()
+        return {"message": "Todo deleted successfully"}
+    
+    else:
+        print("You are not authorized to Delete this ToDos")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not Authorized to change ToDo",
+        )
+
+
+# @app.get("/todos/")
+# def retrieve_todos(username = ToDos.username, db: Session = Depends(create_session)):
+#     # print(username)
+#     statement = select(ToDos).where(ToDos.username == username)
+#     # print(statement)
+#     results = db.exec(statement)
+#     # print(results.all())
+#     return results.all()
+
+# @app.post("/todos/")
+# def create_todo(todo: ToDos, db: Session = Depends(create_session)):
+#     db.add(todo)
+#     db.commit()
+#     db.refresh(todo)
+#     return todo
+
+# @app.get("/todos/{todo_id}")
+# def get_todo_id(todo_id: int, db: Session = Depends(create_session)):
+#     todo = db.get(ToDos, todo_id)
+#     if todo is None:
+#         raise HTTPException(status_code=404, detail="Todo not found")
+#     return todo
+
+# @app.put("/todos/{todo_id}")
+# def update_todo(todo_id: int, updated_todo: ToDos, db: Session = Depends(create_session)):
+#     statement = select(ToDos).where(ToDos.id == todo_id)
+#     results = db.exec(statement)
+#     todo = results.one()
+
+#     todo.title = updated_todo.title
+#     todo.description = updated_todo.description
+#     todo.target_date = updated_todo.target_date
+
+#     db.add(todo)
+#     db.commit()
+#     db.refresh(todo)
+
+#     return True
