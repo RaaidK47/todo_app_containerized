@@ -84,40 +84,56 @@ def login():
             password1 = st.text_input('Password', placeholder="Enter Your Password", type="password")
             password2 = st.text_input('Confirm Password', placeholder="Confirm Your Password", type="password")
 
-            if email:
-                if validate_email(email): #Validating that entered email is of correct format
-                    if email not in get_user_emails(): # Checking that same email is not already in use
-                        if validate_username(username):
-                            if username not in get_usernames():
-                                if len(username) > 2:
-                                    if len(password1) >= 6:
-                                        if password1 == password2:
-                                            hashed_password = Hasher([password1]).generate()
-                                            # Add User to the Database
-                                            try:
-                                                insert_user(email, username, hashed_password[0])
-                                                st.success('Account Created Successfully!')
-                                            except Exception as e:
-                                                st.error("Internal Error Occurred")
-                                        else:
-                                            st.warning('Passwords do not match!')
-                                    else:
-                                        st.warning('Password is too Short')
-                                else:
-                                    st.warning('Username is too Short')
-                            else:
-                                st.warning('Username Already Exist!')
-                        else:
-                            st.warning('Invalid Username')
-                    else:
-                        st.warning('Email Already Exist!')
-                else:
-                    st.error('Invalid Email')
-
             btn1, btn2, btn3 = st.columns(3)  #Centering Signup Button in Form
             with btn2:
-                st.form_submit_button('Sign Up')
+                submitted = st.form_submit_button('Sign Up')
+                
+            if submitted:
+                if not email:
+                    st.warning('Enter Email')
+                    return
+                elif not username:
+                    st.warning('Enter Username')
 
+                elif not password1:
+                    st.warning('Enter Password')
+                    return
+                elif not password2:
+                    st.warning('Confirm Password')
+
+                if not validate_email(email):
+                    st.warning('Invalid Email')
+                
+                elif not validate_username(username):
+                    st.warning('Invalid Username')
+                
+                elif len(username) < 3:
+                    st.warning('Username is too Short')
+
+                
+                elif password1 != password2:
+                    st.warning('Passwords do not match!')
+
+                
+                elif len(password1) < 6:
+                    st.warning('Password is too Short')
+
+
+                else:
+                    hashed_password = Hasher([password1]).generate()
+                    hashed_password = hashed_password[0]
+
+                    response = requests.post(f"{BASE_URL}/create_user", json={"username": username,
+                                                                        "email": email,
+                                                                        "hash_password": hashed_password})
+
+                    if response.status_code == 200:
+                        st.success("Account Created Successfully!")
+
+                    else:
+                        response_detail = response.json()
+                        detail_text = response_detail.get("detail", "No detail provided.")
+                        st.error(f"Error: {detail_text}")
 
 
 if st.session_state.token:

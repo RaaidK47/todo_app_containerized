@@ -15,6 +15,8 @@ import logging
 from starlette.middleware.cors import CORSMiddleware
 import api.settings as settings
 
+
+
 logging.getLogger('passlib').setLevel(logging.ERROR) # To Suppress bcrypt Warnings
 
 
@@ -158,6 +160,62 @@ async def get_current_active_user(
     #     raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
+@app.post("/create_user")
+def create_user(user: Users,
+                       db: Session = Depends(create_session)):
+    '''Create a New User in the Database'''
+
+    email = str(user.email)
+    username = str(user.username)
+    hashed_password = str(user.hash_password) 
+
+    print(email)
+    print(username)
+    print(hashed_password)
+        
+    def get_user_emails():
+        '''Getting all emails from the database'''
+        emails_in_db = []
+        
+        statement = select(Users.email)
+        results = db.exec(statement)
+        for i in results:
+            # print(i)
+            emails_in_db.append(str(i).lower())
+
+        return emails_in_db
+    
+    
+    def get_usernames():
+        '''Getting all usernames from the database'''
+        usernames_in_db = []
+        
+        statement = select(Users.username)
+        results = db.exec(statement)
+        for i in results:
+            # print(i)
+            usernames_in_db.append(str(i).lower())
+        return usernames_in_db
+
+
+    if str(email).lower() not in get_user_emails(): # Checking that same email is not already in use
+        
+        if str(username).lower() not in get_usernames():
+            try:
+                user = Users(email=email, username=username, hash_password=hashed_password)
+                db.add(user)
+                db.commit()
+                db.refresh(user)
+                # return user
+                return True
+            except Exception as e:
+                return False
+        else:
+            raise HTTPException(status_code=400, detail="Username Already Exist")
+        
+    else:
+        raise HTTPException(status_code=400, detail="Email Already Exist")
+
 @app.post("/token")
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
@@ -201,6 +259,9 @@ def get_todos_user(
     results = session.exec(statement)
     # print(results.all())
     return results.all()
+
+
+
 
 @app.post("/users/me/todos/")
 def create_todo(current_user: Annotated[Users, Depends(get_current_active_user)],
