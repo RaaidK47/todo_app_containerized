@@ -74,7 +74,7 @@ def login():
                     else:
                         st.error("Username / Password is Incorrect")
 
-
+    st.write("**Developed By:**  M. Raaid Khan")
     with col2:
         signup_form = st.empty()
         with signup_form.form(key="signup", clear_on_submit=True):
