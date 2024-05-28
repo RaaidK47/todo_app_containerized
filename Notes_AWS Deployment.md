@@ -9,3 +9,7 @@
 * Make sure that docker daemon is running.
 
 * Start Project using `docker-compose -f compose.yaml up -d`
+
+* Make Sure to 
+    * Allow Ports 8000 & 8501 to accept all TCP traffic.
+    * I.e. allow ports that are forwarded in Docker.
