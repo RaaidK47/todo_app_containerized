@@ -1,7 +1,5 @@
 version: "3.9"
 
-name: todo-app
-
 services:
   api:
     build:  
