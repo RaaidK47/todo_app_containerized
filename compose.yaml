@@ -37,7 +37,7 @@ services:
 
     environment:
       - POSTGRES_USER=raaidk
-      - POSTGRES_PASSWORD=${DB_USER}
+      - POSTGRES_PASSWORD=pass123
       - POSTGRES_DB=todo_database
 
     ports:
