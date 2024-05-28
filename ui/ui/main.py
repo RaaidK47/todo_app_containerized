@@ -1,7 +1,7 @@
 '''Main Streamlit Application'''
 import streamlit as st
 import streamlit_authenticator as stauth
-from db_actions import validate_email, get_user_emails, validate_username, get_usernames, insert_user
+from db_actions import validate_email, validate_username
 from streamlit_authenticator.utilities.hasher import Hasher
 import time
 from streamlit_extras.stylable_container import stylable_container
