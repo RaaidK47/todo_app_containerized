@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, Depends
 from sqlmodel import Field, SQLModel, create_engine, Session, select
 import psycopg2
 import os
+import json
 
 from typing import Annotated, Union
 import jwt
@@ -15,6 +16,8 @@ import logging
 from starlette.middleware.cors import CORSMiddleware
 import api.settings as settings
 
+import asyncio
+from aiokafka import AIOKafkaProducer
 
 
 logging.getLogger('passlib').setLevel(logging.ERROR) # To Suppress bcrypt Warnings
@@ -32,6 +35,24 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 app = FastAPI()
+
+# Kafka Configuration
+KAFKA_TOPIC = "your_topic"
+KAFKA_BOOTSTRAP_SERVERS = "broker:19092"
+
+async def produce_messages():
+    producer = AIOKafkaProducer(
+        bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+        value_serializer=lambda v: json.dumps(v.decode('utf-8')).encode('utf-8') if isinstance(v, bytes) else json.dumps(v).encode('utf-8')
+    )
+    await producer.start()
+    try:
+        message = {'message': f'Hello Kafka'}
+        await producer.send_and_wait(KAFKA_TOPIC, json.dumps(message).encode('utf-8'))
+        print(f"Produced message: {message}")
+    finally:
+        await producer.stop()
+
 
 # CORS Middleware is required for CORS Issue
 # When running FastAPI in Docker & Swagger in Local Computer
@@ -87,7 +108,8 @@ def create_session():
 
 
 @app.get("/")
-def hello():
+async def hello():
+    await produce_messages()
     return {"Hello": "World"}
 
 def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None):
@@ -158,6 +180,7 @@ async def get_current_active_user(
 ):
     # if current_user.disabled:
     #     raise HTTPException(status_code=400, detail="Inactive user")
+    producer.send('todo-app', "User Logged In")
     return current_user
 
 @app.post("/create_user")

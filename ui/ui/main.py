@@ -14,7 +14,6 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-
 BASE_URL = "http://172.17.0.1:8000"  # BASE URL of Docker Container
 # BASE_URL = "http://127.0.0.1:8000"     # BASE URL of Local PC
 
