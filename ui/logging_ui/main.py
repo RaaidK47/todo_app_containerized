@@ -1,6 +1,8 @@
 import asyncio
 from aiokafka import AIOKafkaConsumer
 import streamlit as st
+import json
+import re
 
 def wide_space_default():
     st.set_page_config(layout="wide")
@@ -19,13 +21,30 @@ async def consume():
     await consumer.start()
     try:
         async for msg in consumer:
-            st.write(f"Received message: {msg.value.decode('utf-8')}")
+            msg = msg.value.decode('utf-8')
+            data = json.loads(msg)
+            data = json.loads(data)  #msg string converted to json
+
+            for key, value in data.items():
+                if key == "Info":
+                    text = f'<span style="color: blue;">{key}:</span> <span > {value}</span>.'
+                    st.markdown(text, unsafe_allow_html=True)
+
+                elif key == "Success":
+                    text = f'<span style="color: green;">{key}:</span> <span > {value}</span>.'
+                    st.markdown(text, unsafe_allow_html=True)
+
+                elif key == "Error":
+                    text = f'<span style="color: red;">{key}:</span> <span > {value}</span>.'
+                    st.markdown(text, unsafe_allow_html=True)
+
+
     finally:
         await consumer.stop()
 
 def main():
-    st.title("Kafka Consumer with Streamlit")
-    st.write("Waiting for messages...")
+    st.title("Application Logs")
+    st.write("Kafka Broker Initiated...")
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)

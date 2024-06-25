@@ -40,16 +40,15 @@ app = FastAPI()
 KAFKA_TOPIC = "your_topic"
 KAFKA_BOOTSTRAP_SERVERS = "broker:19092"
 
-async def produce_messages():
+async def produce_messages(message):
     producer = AIOKafkaProducer(
         bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
         value_serializer=lambda v: json.dumps(v.decode('utf-8')).encode('utf-8') if isinstance(v, bytes) else json.dumps(v).encode('utf-8')
     )
     await producer.start()
     try:
-        message = {'message': f'Hello Kafka'}
         await producer.send_and_wait(KAFKA_TOPIC, json.dumps(message).encode('utf-8'))
-        print(f"Produced message: {message}")
+        # print(f"Produced message: {message}")
     finally:
         await producer.stop()
 
@@ -109,7 +108,7 @@ def create_session():
 
 @app.get("/")
 async def hello():
-    await produce_messages()
+    await produce_messages({'Info':'Base API Accessed'})
     return {"Hello": "World"}
 
 def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None):
@@ -180,13 +179,14 @@ async def get_current_active_user(
 ):
     # if current_user.disabled:
     #     raise HTTPException(status_code=400, detail="Inactive user")
-    producer.send('todo-app', "User Logged In")
     return current_user
 
 @app.post("/create_user")
-def create_user(user: Users,
+async def create_user(user: Users,
                        db: Session = Depends(create_session)):
     '''Create a New User in the Database'''
+
+    await produce_messages({'Info':'Create User Request Received'})
 
     email = str(user.email)
     username = str(user.username)
@@ -230,13 +230,17 @@ def create_user(user: Users,
                 db.commit()
                 db.refresh(user)
                 # return user
+                await produce_messages({'Success':f'User with username *{username}* created successfully!'})
                 return True
             except Exception as e:
+                await produce_messages({'Error':f'Unable to create user due to internal error'})
                 return False
         else:
+            await produce_messages({'Error':f'Username *{username}* already exist'})
             raise HTTPException(status_code=400, detail="Username Already Exist")
         
     else:
+        await produce_messages({'Error':f'Email *{email}* already exist'})
         raise HTTPException(status_code=400, detail="Email Already Exist")
 
 @app.post("/token")
@@ -248,6 +252,7 @@ async def login_for_access_token(
     users_all = fetch_users()
     user = authenticate_user(users_all, form_data.username, form_data.password)
     if not user:
+        await produce_messages({'Error':f'Incorrect username or password for user *{form_data.username}*'})
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -258,6 +263,7 @@ async def login_for_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
     print("Token Generated")
+    await produce_messages({'Success':f'Token Generated for User *{user.username}*'})
     return Token(access_token=access_token, token_type="bearer")
 
 @app.get("/users/me/", response_model=Users)
@@ -268,7 +274,7 @@ async def read_users_me(
     return current_user
 
 @app.get("/users/me/todos/")
-def get_todos_user(
+async def get_todos_user(
     current_user: Annotated[Users, Depends(get_current_active_user)]
 ):
     '''Returning ToDos for User that is 
@@ -281,13 +287,14 @@ def get_todos_user(
     # print(statement)
     results = session.exec(statement)
     # print(results.all())
+    await produce_messages({'Info':f'ToDos for User *{current_user.username}* were retreived'})
     return results.all()
 
 
 
 
 @app.post("/users/me/todos/")
-def create_todo(current_user: Annotated[Users, Depends(get_current_active_user)],
+async def create_todo(current_user: Annotated[Users, Depends(get_current_active_user)],
                 todo: ToDos, 
                 db: Session = Depends(create_session)
 ):
@@ -298,11 +305,12 @@ def create_todo(current_user: Annotated[Users, Depends(get_current_active_user)]
     db.add(todo)
     db.commit()
     db.refresh(todo)
+    await produce_messages({'Success':f'ToDo Created for User *{current_user.username}* '})
     return todo
 
 
 @app.put("/users/me/todos/{todo_id}")
-def update_todo(current_user: Annotated[Users, Depends(get_current_active_user)],
+async def update_todo(current_user: Annotated[Users, Depends(get_current_active_user)],
                 todo_id: int, 
                 updated_todo: ToDos, 
                 db: Session = Depends(create_session)):
@@ -315,6 +323,7 @@ def update_todo(current_user: Annotated[Users, Depends(get_current_active_user)]
     todo = results.one()
 
     if todo is None:
+        await produce_messages({'Error':f'ToDo for User {current_user.username} not found'})
         raise HTTPException(status_code=404, detail="Todo not found")
 
     if(todo.username == str(current_user.username).lower()):
@@ -324,6 +333,7 @@ def update_todo(current_user: Annotated[Users, Depends(get_current_active_user)]
 
         db.add(todo)
         db.commit()
+        await produce_messages({'Success':f'ToDo for User {current_user.username} updated successfully'})
         db.refresh(todo)
         return True
 
@@ -337,7 +347,7 @@ def update_todo(current_user: Annotated[Users, Depends(get_current_active_user)]
 
 
 @app.patch("/users/me/todos/{todo_id}")
-def update_todo_completed(current_user: Annotated[Users, Depends(get_current_active_user)],
+async def update_todo_completed(current_user: Annotated[Users, Depends(get_current_active_user)],
                           todo_id: int, todo_updated:ToDos, 
                           db: Session = Depends(create_session)):
     # print(todo_updated)
@@ -348,6 +358,7 @@ def update_todo_completed(current_user: Annotated[Users, Depends(get_current_act
     todo = results.one()
 
     if todo is None:
+        await produce_messages({'Error':f'ToDo for User {current_user.username} not found'})
         raise HTTPException(status_code=404, detail="Todo not found")
 
     if(todo.username == str(current_user.username).lower()):
@@ -356,7 +367,7 @@ def update_todo_completed(current_user: Annotated[Users, Depends(get_current_act
         db.add(todo)
         db.commit()
         db.refresh(todo)
-
+        await produce_messages({'Success':f'Completion Status for ToDo <{todo_id}> of User {current_user.username} updated successfully'})
         return True
     
     else:
@@ -368,7 +379,7 @@ def update_todo_completed(current_user: Annotated[Users, Depends(get_current_act
 
 
 @app.delete("/users/me/todos/{todo_id}")
-def delete_todo(current_user: Annotated[Users, Depends(get_current_active_user)],
+async def delete_todo(current_user: Annotated[Users, Depends(get_current_active_user)],
                 todo_id: int, 
                 db: Session = Depends(create_session)):
     '''Deleting ToDo Item for the User that is
@@ -379,15 +390,18 @@ def delete_todo(current_user: Annotated[Users, Depends(get_current_active_user)]
     todo = results.one()
 
     if todo is None:
+        await produce_messages({'Error':f'ToDo for User {current_user.username} not found'})
         raise HTTPException(status_code=404, detail="Todo not found")
     
     if (todo.username == str(current_user.username).lower()):
         db.delete(todo)
         db.commit()
+        await produce_messages({'Success':f'ToDo <{todo_id}> for User {current_user.username} deleted successfully'})
         return {"message": "Todo deleted successfully"}
     
     else:
         print("You are not authorized to Delete this ToDos")
+        await produce_messages({'Error':f'User not Authorized to Delete ToDo'})
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not Authorized to change ToDo",
