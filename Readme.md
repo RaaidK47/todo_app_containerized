@@ -16,6 +16,7 @@
 * Docker-Compose
 * Streamlit
 * FastAPI
+* Postgres Database
 * Kafka
 * Kafka-UI
 * Amazon Web Services (AWS)
@@ -60,6 +61,10 @@
 
 *  Authentication in FastAPI is achieved using JSON Web Tokens (JWTs)
   
+## Database
+
+* Postgres Database is implemented as a separate Docker Container.
+* Connectivity to Database is implemented using Environment Variables.
 
 ## Kafka - UI
 
@@ -71,6 +76,11 @@
     ![image info](./pictures/image7.png)
 
 * This page will log history of all users even if they are using the application simultaneously.
+
+* You can also go to `http://localhost:8080` to access Kafka-UI as below
+
+    ![image info](./pictures/image8.png)
+
 
 ## Deployment on AWS.
 
